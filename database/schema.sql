@@ -76,3 +76,21 @@ CREATE POLICY "Users can read own order items" ON public.order_items FOR SELECT 
 -- Reviews: Anyone can read, authenticated users can create.
 CREATE POLICY "Anyone can read reviews" ON public.reviews FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can create reviews" ON public.reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Visitors Table
+CREATE TABLE public.visitors (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  ip_address TEXT,
+  user_agent TEXT,
+  path TEXT NOT NULL,
+  visited_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS for Visitors
+ALTER TABLE public.visitors ENABLE ROW LEVEL SECURITY;
+
+-- Visitors: Anyone can insert, only admin can read. We'll just allow anon/auth insert for tracking.
+CREATE POLICY "Anyone can insert visitors" ON public.visitors FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can read visitors" ON public.visitors FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
+);
